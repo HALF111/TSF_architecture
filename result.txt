@@ -1,0 +1,9 @@
+national_illness_104_24_PatchTST_custom_ftM_sl104_ll48_pl24_dm16_nh4_el3_dl1_df128_fc1_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:1.3835786581039429, mae:0.7689719200134277, rse:0.5676411390304565
+
+national_illness_104_24_Decoder_direct_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl3_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:2.440291404724121, mae:0.9938221573829651, rse:0.7538635730743408
+
+national_illness_104_24_Decoder_direct_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl3_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:2.449075698852539, mae:0.9990466237068176, rse:0.7552192807197571
+
