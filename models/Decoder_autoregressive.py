@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers.Transformer_EncDec import PureDecoder, PureDecoderLayer
+from layers.Transformer_EncDec import Decoder_wo_CrossAttn, DecoderLayer_wo_CrossAttn
 from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import DataEmbedding,DataEmbedding_wo_pos,DataEmbedding_wo_temp,DataEmbedding_wo_pos_temp
 import numpy as np
@@ -141,10 +141,10 @@ class Model(nn.Module):
         # Decoder中包含d_layers个DecoderLayer，
         # 其中每个DecoderLayer中包括一个使用ProbAttention的自注意力层，和一个使用FullAttention的正常的注意力层（这个注意力层的queries来自上一层自注意力层，而keys和values则来自encoder）
         # 最后也还是再加上一层layerNorm层
-        # ! 这里改成PureDecoder！
-        self.decoder = PureDecoder(
+        # ! 这里改成Decoder_wo_CrossAttn！
+        self.decoder = Decoder_wo_CrossAttn(
             [
-                PureDecoderLayer(
+                DecoderLayer_wo_CrossAttn(
                     AttentionLayer(
                         FullAttention(True, configs.factor, attention_dropout=configs.dropout, output_attention=False),
                         configs.d_model, configs.n_heads),  # 注意这里第一个的mask_flag参数被设置成为了True，这是因为在decoder的第一层用的是masked的自注意力；而其他的注意力都是False

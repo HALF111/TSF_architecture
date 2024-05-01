@@ -7,6 +7,31 @@ from layers.Embed import DataEmbedding,DataEmbedding_wo_pos,DataEmbedding_wo_tem
 import numpy as np
 from layers.RevIN import RevIN
 
+
+class PrefixMask():
+    def __init__(self, batch_num, total_len, input_len, device="cpu"):
+        with torch.no_grad():
+            if total_len >= input_len:
+                # 1、设置上三角矩阵
+                mask_shape = [batch_num, 1, total_len, total_len]
+                self._mask = torch.triu(torch.ones(mask_shape, dtype=torch.bool), diagonal=1).to(device)
+                # print(self._mask[0][0])
+                # 2、填充input_len中均为False？
+                # ! 注意：False表示不做mask，True才表示要做mask！！！
+                input_len_shape = [batch_num, 1, input_len, input_len]
+                # ! 所以这里应当是torch.zeros而非torch.ones！！
+                self._mask[:, :, :input_len, :input_len] = torch.zeros(input_len_shape)
+                # print(self._mask[0][0])
+            else:
+                # 如果total_len比input_len还小，那么直接填充全为1
+                input_len_shape = [batch_num, 1, total_len, total_len]
+                # ! 同理这里也是torch.zeros而非torch.ones！！
+                self._mask = torch.zeros(input_len_shape)
+
+    @property
+    def mask(self):
+        return self._mask
+
 # reference: https://zhuanlan.zhihu.com/p/664394437
 
 class Model(nn.Module):
@@ -119,6 +144,12 @@ class Model(nn.Module):
             self.norm_layer = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(configs.d_model), Transpose(1,2))
         else:
             self.norm_layer = nn.LayerNorm(configs.d_model)
+            
+        # ! 由于是prefix decoder，所以这里需要设置一下mask！！！
+        self.new_batch_size = configs.batch_size * configs.enc_in
+        self.dec_mask = PrefixMask(self.new_batch_size, self.input_patch_num + self.output_patch_num, self.input_patch_num)
+        print(self.dec_mask._mask.shape)
+        # print(self.dec_mask._mask[0][0])
         
         # # Encoder
         # # 其中包含e_layers个EncoderLayer层，和e_layers-1个ConvLayer层
@@ -204,22 +235,18 @@ class Model(nn.Module):
         
         # * x_dec同理
         x_dec = x_dec.permute(0,2,1)                                                # [batch_size, channel, seq_len]
-        x_dec = x_dec.unfold(dimension=-1, size=self.patch_len, step=self.stride)   # [bs x channel x patch_num x patch_len]
+        x_dec = x_dec.unfold(dimension=-1, size=self.patch_len, step=self.stride)   # [bs x channel x total_patch_num x patch_len]
         bs, nvars, output_patch_num, patch_len = x_dec.shape
         x_dec = x_dec.reshape(bs*nvars, output_patch_num, patch_len)  # [(bs*channel) x patch_num x patch_len]
 
-
-        # # 先对encoder的输入数据做一次embedding
-        # # ! 注意，这里不需要x_mark_enc信息了！其中的位置编码足以标志出信息！
-        # enc_out = self.enc_embedding(x_enc)  # [(bs*channel) x input_patch_num x d_model]
-        # # 将embedding后的数据输入到encoder中
-        # enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)  # [(bs*channel) x input_patch_num x d_model]
-
+        
         # 对于decoder，我们同样需要做一次embedding
         # ! 同理，这里也不需要x_mark_dec信息了！
         dec_out = self.dec_embedding(x_dec)  # [(bs*channel) x output_patch_num x d_model]
         # 之后embedding后的数据和上面encoder的结果共同送入decoder中
-        dec_out = self.decoder(dec_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)  # [(bs*channel) x output_patch_num x patch_len]
+        # ! 这里需要用新的自定义的mask？
+        self.dec_mask._mask = self.dec_mask._mask.to(dec_out.device)
+        dec_out = self.decoder(dec_out, x_mask=self.dec_mask)  # [(bs*channel) x output_patch_num x patch_len]
         
         dec_out = dec_out.reshape(bs, nvars, output_patch_num, patch_len)
         # ! 注意，这里总长度应当和seq_len+pred_len一样长！

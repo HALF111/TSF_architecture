@@ -5,8 +5,8 @@ data_name=ETTh1
 
 # seq_len=104
 # model_name=PatchTST
-model_name=Transformer
-# model_name=Transformer_patch
+# model_name=Transformer
+model_name=Transformer_patch
 
 gpu_num=3
 
@@ -37,6 +37,8 @@ do
       --itr 1 \
       --learning_rate 0.0003 \
       --train_epochs 20\
+      --patch_len 16 \
+      --stride 16 \
       --gpu $gpu_num \
       --batch_size 32 \
       --run_train --run_test \

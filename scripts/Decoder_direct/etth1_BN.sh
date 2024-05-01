@@ -7,6 +7,9 @@ data_name=ETTh1
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
+model_name=Decoder_direct
+e_layers=0
+d_layers=6
 
 gpu_num=3
 

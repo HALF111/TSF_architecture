@@ -206,10 +206,10 @@ class Decoder(nn.Module):
 
 
 # 由于Decoder-only模型中不包含cross-attention，所以这里也要做个修改！
-class PureDecoderLayer(nn.Module):
+class DecoderLayer_wo_CrossAttn(nn.Module):
     def __init__(self, self_attention, d_model, d_ff=None,
                  dropout=0.1, activation="relu", norm_type="layer"):
-        super(PureDecoderLayer, self).__init__()
+        super(DecoderLayer_wo_CrossAttn, self).__init__()
         
         d_ff = d_ff or 4 * d_model
         
@@ -257,9 +257,9 @@ class PureDecoderLayer(nn.Module):
         return self.norm2(x + y)
 
 
-class PureDecoder(nn.Module):
+class Decoder_wo_CrossAttn(nn.Module):
     def __init__(self, layers, norm_layer=None, projection=None):
-        super(PureDecoder, self).__init__()
+        super(Decoder_wo_CrossAttn, self).__init__()
         self.layers = nn.ModuleList(layers)
         self.norm = norm_layer
         self.projection = projection

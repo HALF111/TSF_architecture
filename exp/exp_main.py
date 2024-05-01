@@ -4,10 +4,11 @@
 # from visualizer import get_local
 # get_local.activate()  # 激活装饰器
 
+
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 
-from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear, PatchTST
+from models import Informer, Autoformer, DLinear, Linear, NLinear, PatchTST
 # from models import PatchTST_multi_MoE, PatchTST_MoE, PatchTST_head_MoE, PatchTST_weighted_avg
 # from models import PatchTST_weighted_concat, PatchTST_weighted_pred_layer_avg
 # from models import PatchTST_weighted_concat_no_constrain
@@ -15,9 +16,9 @@ from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear, 
 # from models import PatchTST_attn_weighted, PatchTST_attn_weight_global, PatchTST_attn_weight_global_indiv
 # from models import PatchTST_attn_weight_corr_dmodel_indiv
 # from models import PatchTST_random_mask
-from models import Masked_encoder
-from models import Transformer_patch, Transformer_patch_autoregressive
-from models import Decoder_autoregressive, Decoder_direct
+from models import Masked_encoder, Encoder, Encoder_zeros, Encoder_overall
+from models import Transformer, Transformer_autoregressive, Transformer_no_patch
+from models import Decoder_autoregressive, Decoder_direct, Prefix_decoder_direct
 
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
@@ -65,7 +66,7 @@ class Exp_Main(Exp_Basic):
             
         model_dict = {
             'Autoformer': Autoformer,
-            'Transformer': Transformer,
+            'Transformer': Transformer_no_patch,
             'Informer': Informer,
             'DLinear': DLinear,
             'NLinear': NLinear,
@@ -84,10 +85,15 @@ class Exp_Main(Exp_Basic):
             # 'PatchTST_attn_weight_corr_dmodel_indiv': PatchTST_attn_weight_corr_dmodel_indiv,
             # 'PatchTST_random_mask': PatchTST_random_mask,
             'Masked_encoder': Masked_encoder,
-            'Transformer_patch': Transformer_patch,
-            'Transformer_patch_autoregressive': Transformer_patch_autoregressive,
+            'Encoder': Encoder,
+            'Encoder_zeros': Encoder_zeros,
+            'Encoder_overall': Encoder_overall,
+            'Transformer': Transformer,
+            'Transformer_no_patch': Transformer_no_patch,
+            'Transformer_autoregressive': Transformer_autoregressive,
             'Decoder_autoregressive': Decoder_autoregressive,
             'Decoder_direct': Decoder_direct,
+            'Prefix_decoder_direct': Prefix_decoder_direct,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -391,7 +397,7 @@ class Exp_Main(Exp_Basic):
                             # print("ys.shape", ys.shape)
                             # print("outputs.shape", outputs.shape)
                     
-                    elif 'Decoder_direct' in self.args.model:
+                    elif 'Decoder_direct' in self.args.model or 'Prefix_decoder_direct' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         # 先去掉label_len
@@ -419,8 +425,12 @@ class Exp_Main(Exp_Basic):
                         outputs = self.model(batch_x, random_len)
                     elif 'MoE' in self.args.model:
                         outputs, aux_loss = self.model(batch_x)
-                    elif 'Linear' in self.args.model or 'TST' in self.args.model or 'Masked_encoder' in self.args.model:
+                    elif 'Linear' in self.args.model \
+                        or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
+                    elif 'Masked_encoder' in self.args.model \
+                        or 'Encoder' in self.args.model:
+                        outputs = self.model(batch_x, batch_x_mark)
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
@@ -593,7 +603,7 @@ class Exp_Main(Exp_Basic):
                             # * 另外，由于是decoder，所以这里只需要输入dec_inp即可，不需要batch_x相关的内容
                             outputs = self.model(dec_inp, batch_y_mark)
                     
-                    elif 'Decoder_direct' in self.args.model:
+                    elif 'Decoder_direct' in self.args.model or 'Prefix_decoder_direct' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         # 先去掉label_len
@@ -625,8 +635,12 @@ class Exp_Main(Exp_Basic):
                         outputs = self.model(batch_x, random_len)
                     elif 'MoE' in self.args.model:
                         outputs, aux_loss = self.model(batch_x)
-                    elif 'Linear' in self.args.model or 'TST' in self.args.model or 'Masked_encoder' in self.args.model:
+                    elif 'Linear' in self.args.model \
+                        or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
+                    elif 'Masked_encoder' in self.args.model \
+                        or 'Encoder' in self.args.model:
+                        outputs = self.model(batch_x, batch_x_mark)
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
@@ -920,7 +934,7 @@ class Exp_Main(Exp_Basic):
                             # 也即保留靠后的pred_len部分。
                             outputs = ys[:, -self.args.pred_len:, :]
                     
-                    elif 'Decoder_direct' in self.args.model:
+                    elif 'Decoder_direct' in self.args.model or 'Prefix_decoder_direct' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         # 先去掉label_len
@@ -948,8 +962,12 @@ class Exp_Main(Exp_Basic):
                         outputs = self.model(batch_x, random_len)
                     elif 'MoE' in self.args.model:
                         outputs, aux_loss = self.model(batch_x)
-                    elif 'Linear' in self.args.model or 'TST' in self.args.model or 'Masked_encoder' in self.args.model:
+                    elif 'Linear' in self.args.model \
+                        or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
+                    elif 'Masked_encoder' in self.args.model \
+                        or 'Encoder' in self.args.model:
+                        outputs = self.model(batch_x, batch_x_mark)
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
@@ -1053,8 +1071,12 @@ class Exp_Main(Exp_Basic):
                 else:
                     if 'MoE' in self.args.model:
                         outputs, aux_loss = self.model(batch_x)
-                    elif 'Linear' in self.args.model or 'TST' in self.args.model or 'Masked_encoder' in self.args.model:
+                    elif 'Linear' in self.args.model \
+                        or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
+                    elif 'Masked_encoder' in self.args.model \
+                        or 'Encoder' in self.args.model:
+                        outputs = self.model(batch_x, batch_x_mark)
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]

@@ -6,11 +6,17 @@ data_name=ETTh1
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
-model_name=Transformer_patch
+# model_name=Transformer_patch
+# model_name=Decoder_direct
+model_name=Prefix_decoder_direct
+e_layers=0
+d_layers=6
 
 gpu_num=3
 
 random_seed=2021
+
+for model_name in Transformer
 for seq_len in 336
 do
 for pred_len in 96
@@ -42,6 +48,6 @@ do
       --gpu $gpu_num \
       --batch_size 32 \
       --run_train --run_test \
-      --norm layer
+      --norm batch
 done
 done

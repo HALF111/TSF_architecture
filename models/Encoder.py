@@ -45,6 +45,9 @@ class Model(nn.Module):
         decomposition = configs.decomposition
         kernel_size = configs.kernel_size
         
+        # 记录一些self的变量：
+        self.seq_len = configs.seq_len
+        self.pred_len = configs.pred_len
         
         # RevIn
         # 这里默认是做RevIN的，且维度c_in为channel维
@@ -138,35 +141,38 @@ class Model(nn.Module):
             norm_layer=self.norm_layer
         )
         
-        # Decoder
-        # Decoder中包含d_layers个DecoderLayer，
-        # 其中每个DecoderLayer中包括一个使用ProbAttention的自注意力层，和一个使用FullAttention的正常的注意力层（这个注意力层的queries来自上一层自注意力层，而keys和values则来自encoder）
-        # 最后也还是再加上一层layerNorm层
-        self.decoder = Decoder(
-            [
-                DecoderLayer(
-                    AttentionLayer(
-                        FullAttention(True, configs.factor, attention_dropout=configs.dropout, output_attention=False),
-                        configs.d_model, configs.n_heads),  # 注意这里第一个的mask_flag参数被设置成为了True，这是因为在decoder的第一层用的是masked的自注意力；而其他的注意力都是False
-                    AttentionLayer(
-                        FullAttention(False, configs.factor, attention_dropout=configs.dropout, output_attention=False),
-                        configs.d_model, configs.n_heads),
-                    configs.d_model,
-                    configs.d_ff,
-                    dropout=configs.dropout,
-                    activation=configs.activation,
-                    norm_type=configs.norm,
-                )
-                for l in range(configs.d_layers)
-            ],
-            # norm_layer=torch.nn.LayerNorm(configs.d_model),
-            norm_layer=self.norm_layer,
-            # projection=nn.Linear(configs.d_model, configs.c_out, bias=True)
-            # ! 注意这里的projection的映射维度也要改成patch_len
-            projection=nn.Linear(configs.d_model, self.patch_len, bias=True)
-        )
+        self.flatten = nn.Flatten(start_dim=-2)
+        self.projection = nn.Linear(self.input_patch_num*configs.d_model, self.pred_len)
+        
+        # # Decoder
+        # # Decoder中包含d_layers个DecoderLayer，
+        # # 其中每个DecoderLayer中包括一个使用ProbAttention的自注意力层，和一个使用FullAttention的正常的注意力层（这个注意力层的queries来自上一层自注意力层，而keys和values则来自encoder）
+        # # 最后也还是再加上一层layerNorm层
+        # self.decoder = Decoder(
+        #     [
+        #         DecoderLayer(
+        #             AttentionLayer(
+        #                 FullAttention(True, configs.factor, attention_dropout=configs.dropout, output_attention=False),
+        #                 configs.d_model, configs.n_heads),  # 注意这里第一个的mask_flag参数被设置成为了True，这是因为在decoder的第一层用的是masked的自注意力；而其他的注意力都是False
+        #             AttentionLayer(
+        #                 FullAttention(False, configs.factor, attention_dropout=configs.dropout, output_attention=False),
+        #                 configs.d_model, configs.n_heads),
+        #             configs.d_model,
+        #             configs.d_ff,
+        #             dropout=configs.dropout,
+        #             activation=configs.activation,
+        #             norm_type=configs.norm,
+        #         )
+        #         for l in range(configs.d_layers)
+        #     ],
+        #     # norm_layer=torch.nn.LayerNorm(configs.d_model),
+        #     norm_layer=self.norm_layer,
+        #     # projection=nn.Linear(configs.d_model, configs.c_out, bias=True)
+        #     # ! 注意这里的projection的映射维度也要改成patch_len
+        #     projection=nn.Linear(configs.d_model, self.patch_len, bias=True)
+        # )
 
-    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
+    def forward(self, x_enc, x_mark_enc,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         
         # 假设batch_size=32, seq_len=96, label_len=24, pred_len=48, channel=12, mark_channel=4
@@ -174,8 +180,8 @@ class Model(nn.Module):
         # 也即输入维度为[batch_size, seq_len, channel]
         
         
-        # * 由于decoder不需要label_len，所以这里做个切割
-        x_dec = x_dec[:, -self.pred_len:, :]
+        # # * 由于decoder不需要label_len，所以这里做个切割
+        # x_dec = x_dec[:, -self.pred_len:, :]
         
         # norm
         # 1、先做RevIN归一化
@@ -200,11 +206,11 @@ class Model(nn.Module):
         bs, nvars, input_patch_num, patch_len = x_enc.shape
         x_enc = x_enc.reshape(bs*nvars, input_patch_num, patch_len)  # [(bs*channel) x patch_num x patch_len]
         
-        # * x_dec同理
-        x_dec = x_dec.permute(0,2,1)                                                # [batch_size, channel, seq_len]
-        x_dec = x_dec.unfold(dimension=-1, size=self.patch_len, step=self.stride)   # [bs x channel x patch_num x patch_len]
-        bs, nvars, output_patch_num, patch_len = x_dec.shape
-        x_dec = x_dec.reshape(bs*nvars, output_patch_num, patch_len)  # [(bs*channel) x patch_num x patch_len]
+        # # * x_dec同理
+        # x_dec = x_dec.permute(0,2,1)                                                # [batch_size, channel, seq_len]
+        # x_dec = x_dec.unfold(dimension=-1, size=self.patch_len, step=self.stride)   # [bs x channel x patch_num x patch_len]
+        # bs, nvars, output_patch_num, patch_len = x_dec.shape
+        # x_dec = x_dec.reshape(bs*nvars, output_patch_num, patch_len)  # [(bs*channel) x patch_num x patch_len]
 
 
         # 先对encoder的输入数据做一次embedding
@@ -213,24 +219,31 @@ class Model(nn.Module):
         # 将embedding后的数据输入到encoder中
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)  # [(bs*channel) x input_patch_num x d_model]
 
-        # 对于decoder，我们同样需要做一次embedding
-        # ! 同理，这里也不需要x_mark_dec信息了！
-        dec_out = self.dec_embedding(x_dec)  # [(bs*channel) x output_patch_num x d_model]
-        # 之后embedding后的数据和上面encoder的结果共同送入decoder中
-        dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)  # [(bs*channel) x output_patch_num x patch_len]
+        # # 对于decoder，我们同样需要做一次embedding
+        # # ! 同理，这里也不需要x_mark_dec信息了！
+        # dec_out = self.dec_embedding(x_dec)  # [(bs*channel) x output_patch_num x d_model]
+        # # 之后embedding后的数据和上面encoder的结果共同送入decoder中
+        # dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)  # [(bs*channel) x output_patch_num x patch_len]
         
-        dec_out = dec_out.reshape(bs, nvars, output_patch_num, patch_len)
-        assert output_patch_num*patch_len == self.pred_len
-        dec_out = dec_out.reshape(bs, nvars, self.pred_len)  # [bs x channel x pred_len]
-        dec_out = dec_out.permute(0,2,1)  # [bs x pred_len x channel]
+        # dec_out = dec_out.reshape(bs, nvars, output_patch_num, patch_len)
+        # assert output_patch_num*patch_len == self.pred_len
+        # dec_out = dec_out.reshape(bs, nvars, self.pred_len)  # [bs x channel x pred_len]
+        # dec_out = dec_out.permute(0,2,1)  # [bs x pred_len x channel]
+        
+        # * 先展平，然后做线性映射？
+        output = self.flatten(enc_out)  # [(bs*channel) x patch_num x patch_len]
+        output = self.projection(output)  # [(bs*channel) x pred_len]
+        output = output.reshape(bs, nvars, -1)  # [bs x channel x pred_len]
+        output = output.permute(0,2,1)  # [bs x pred_len x channel]
+        
         
         if self.revin:
             # print(dec_out.shape)
             # print(self.revin_layer.mean.shape)
             # print(self.revin_layer.stdev.shape)
-            dec_out = self.revin_layer(dec_out, 'denorm')  # [bs x pred_len x channel]
+            output = self.revin_layer(output, 'denorm')  # [bs x pred_len x channel]
 
         if self.output_attention:
-            return dec_out[:, -self.pred_len:, :], attns
+            return output[:, -self.pred_len:, :], attns
         else:
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            return output[:, -self.pred_len:, :]  # [B, L, D]

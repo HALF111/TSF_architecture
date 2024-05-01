@@ -6,13 +6,13 @@ data_name=ETTh1
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
-# model_name=Transformer_patch
+model_name=Decoder_autoregressive
+e_layers=0
+d_layers=6
 
 gpu_num=3
 
 random_seed=2021
-
-for model_name in Transformer
 for seq_len in 336
 do
 for pred_len in 96
@@ -28,8 +28,8 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
+      --e_layers $e_layers \
+      --d_layers $d_layers \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -44,6 +44,6 @@ do
       --gpu $gpu_num \
       --batch_size 32 \
       --run_train --run_test \
-      --norm batch
+      --norm layer
 done
 done

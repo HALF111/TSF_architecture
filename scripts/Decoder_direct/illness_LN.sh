@@ -10,6 +10,8 @@ data_name=custom
 # model_name=Transformer_patch_autoregressive
 # model_name=Decoder_autoregressive
 model_name=Decoder_direct
+e_layers=0
+d_layers=6
 
 gpu_num=3
 
@@ -30,7 +32,8 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --d_layers 3 \
+      --e_layers $e_layers \
+      --d_layers $d_layers \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \

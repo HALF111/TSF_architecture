@@ -115,10 +115,17 @@ class DataEmbedding(nn.Module):
             d_model=d_model, embed_type=embed_type, freq=freq)
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x, x_mark=None):
+    def forward(self, x, x_mark=None, mask_token=None):
+        # x: [(bs*channel) x input_patch_num x patch_len]
+        # mask_token: [(bs*channel) x output_patch_num x d_model]
         if x_mark is None:
-            # 如果x_mark为None，则表明不需要covariate信息
-            x = self.value_embedding(x) + self.position_embedding(x)
+            if mask_token is None:
+                # 如果x_mark为None，则表明不需要covariate信息
+                x = self.value_embedding(x) + self.position_embedding(x)
+            else:
+                ve = self.value_embedding(x)  # ve: [(bs*channel) x input_patch_num x d_model]
+                ve_concat_mask = torch.cat((ve, mask_token), dim=1)    # ve_concat_mask: [(bs*channel) x total_patch_num x d_model]
+                x = ve_concat_mask + self.position_embedding(ve_concat_mask)
         else:
             x = self.value_embedding(x) + self.temporal_embedding(x_mark) + self.position_embedding(x)
         return self.dropout(x)

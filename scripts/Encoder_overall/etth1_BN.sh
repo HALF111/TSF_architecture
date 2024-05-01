@@ -7,6 +7,10 @@ data_name=ETTh1
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
+# model_name=Encoder
+model_name=Encoder_overall
+e_layers=6
+d_layers=0
 
 gpu_num=3
 
@@ -28,8 +32,8 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
+      --e_layers $e_layers \
+      --d_layers $d_layers \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
