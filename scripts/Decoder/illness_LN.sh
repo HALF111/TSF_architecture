@@ -9,7 +9,7 @@ data_name=custom
 # model_name=Transformer_patch
 # model_name=Transformer_patch_autoregressive
 # model_name=Decoder_autoregressive
-model_name=Prefix_decoder_direct
+model_name=Decoder
 e_layers=0
 d_layers=6
 

@@ -1,18 +1,19 @@
 root_path_name=./dataset/
-data_path_name=weather.csv
-model_id_name=weather
-data_name=custom
+data_path_name=ETTm2.csv
+model_id_name=ETTm2
+data_name=ETTm2
 
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
-model_name=Transformer_patch
+# model_name=Transformer_patch
 
 gpu_num=3
 
 random_seed=2021
 
 
+# ! 注意：需要用"bash etth2.sh"调用而非"sh etth2.sh"来调用此script
 for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder_direct Decoder_direct Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
@@ -43,13 +44,12 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --pred_len $pred_len \
       --e_layers 2 \
       --d_layers 1 \
       --factor 3 \
-      --enc_in 21 \
-      --dec_in 21 \
-      --c_out 21 \
+      --enc_in 7 \
+      --dec_in 7 \
+      --c_out 7 \
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \

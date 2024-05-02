@@ -18,7 +18,7 @@ from models import Informer, Autoformer, DLinear, Linear, NLinear, PatchTST
 # from models import PatchTST_random_mask
 from models import Masked_encoder, Encoder, Encoder_zeros, Encoder_overall
 from models import Transformer, Transformer_autoregressive, Transformer_no_patch
-from models import Decoder_autoregressive, Decoder_direct, Prefix_decoder_direct
+from models import Decoder, Decoder_autoregressive, Prefix_decoder
 
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
@@ -92,8 +92,8 @@ class Exp_Main(Exp_Basic):
             'Transformer_no_patch': Transformer_no_patch,
             'Transformer_autoregressive': Transformer_autoregressive,
             'Decoder_autoregressive': Decoder_autoregressive,
-            'Decoder_direct': Decoder_direct,
-            'Prefix_decoder_direct': Prefix_decoder_direct,
+            'Decoder': Decoder,
+            'Prefix_decoder': Prefix_decoder,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -397,7 +397,7 @@ class Exp_Main(Exp_Basic):
                             # print("ys.shape", ys.shape)
                             # print("outputs.shape", outputs.shape)
                     
-                    elif 'Decoder_direct' in self.args.model or 'Prefix_decoder_direct' in self.args.model:
+                    elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         # 先去掉label_len
@@ -603,7 +603,7 @@ class Exp_Main(Exp_Basic):
                             # * 另外，由于是decoder，所以这里只需要输入dec_inp即可，不需要batch_x相关的内容
                             outputs = self.model(dec_inp, batch_y_mark)
                     
-                    elif 'Decoder_direct' in self.args.model or 'Prefix_decoder_direct' in self.args.model:
+                    elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         # 先去掉label_len
@@ -934,7 +934,7 @@ class Exp_Main(Exp_Basic):
                             # 也即保留靠后的pred_len部分。
                             outputs = ys[:, -self.args.pred_len:, :]
                     
-                    elif 'Decoder_direct' in self.args.model or 'Prefix_decoder_direct' in self.args.model:
+                    elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         # 先去掉label_len

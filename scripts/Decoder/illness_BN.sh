@@ -6,28 +6,16 @@ data_name=custom
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
-# model_name=Transformer_patch
+# model_name=Transformer_patch_autoregressive
+# model_name=Decoder_autoregressive
+model_name=Decoder
+e_layers=0
+d_layers=6
 
 gpu_num=3
 
 random_seed=2021
-
-
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder_direct Decoder_direct Transformer
-do
-if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
-    e_layers=6
-    d_layers=0
-elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" ]]; then
-    e_layers=0
-    d_layers=6
-elif [[ "$model_name" =~ "Transformer" ]]; then
-    e_layers=3
-    d_layers=3
-fi
-# for norm in layer batch
-for norm in layer
-do
+# for pred_len in 24 36 48 60
 for seq_len in 104
 do
 for pred_len in 24
@@ -43,8 +31,8 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
+      --e_layers $e_layers \
+      --d_layers $d_layers \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -58,8 +46,7 @@ do
       --gpu $gpu_num \
       --batch_size 32 \
       --run_train --run_test \
-      --norm $norm
-done
-done
+      --norm batch \
+    #   --learning_rate 0.0001
 done
 done

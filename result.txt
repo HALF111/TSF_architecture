@@ -64,3 +64,21 @@ mse:0.42661648988723755, mae:0.4390474557876587, rse:0.62040114402771
 ETTh1_336_96_Encoder_overall_ETTh1_ftM_sl336_ll48_pl96_dm32_nh8_el6_dl0_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
 mse:0.41655397415161133, mae:0.427017480134964, rse:0.6130408644676208
 
+national_illness_104_24_Encoder_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:1.4221268892288208, mae:0.7848675847053528, rse:0.5754944086074829
+
+national_illness_104_24_Encoder_overall_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:1.4397164583206177, mae:0.7882411479949951, rse:0.5790424346923828
+
+national_illness_104_24_Encoder_zeros_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:1.2973955869674683, mae:0.7481598854064941, rse:0.5496777296066284
+
+national_illness_104_24_Masked_encoder_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:1.5103360414505005, mae:0.7927114367485046, rse:0.5930737853050232
+
+national_illness_104_24_Transformer_custom_ftM_sl104_ll48_pl24_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:1.2721816301345825, mae:0.7461385130882263, rse:0.5443102121353149
+
+ETTh1_336_96_Encoder_ETTh1_ftM_sl336_ll48_pl96_dm512_nh8_el6_dl0_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:0.39808258414268494, mae:0.41532275080680847, rse:0.5992946028709412
+
