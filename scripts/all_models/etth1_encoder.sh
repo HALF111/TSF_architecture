@@ -14,7 +14,8 @@ random_seed=2021
 
 
 # ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+for model_name in Encoder_zeros_flatten Masked_encoder_flatten
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6

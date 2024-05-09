@@ -17,6 +17,7 @@ from models import Informer, Autoformer, DLinear, Linear, NLinear, PatchTST
 # from models import PatchTST_attn_weight_corr_dmodel_indiv
 # from models import PatchTST_random_mask
 from models import Masked_encoder, Encoder, Encoder_zeros, Encoder_overall
+from models import Encoder_zeros_flatten, Masked_encoder_flatten
 from models import Transformer, Transformer_autoregressive, Transformer_no_patch
 from models import Decoder, Decoder_autoregressive, Prefix_decoder
 
@@ -88,6 +89,8 @@ class Exp_Main(Exp_Basic):
             'Encoder': Encoder,
             'Encoder_zeros': Encoder_zeros,
             'Encoder_overall': Encoder_overall,
+            'Encoder_zeros_flatten': Encoder_zeros_flatten,
+            'Masked_encoder_flatten': Masked_encoder_flatten,
             'Transformer': Transformer,
             'Transformer_no_patch': Transformer_no_patch,
             'Transformer_autoregressive': Transformer_autoregressive,
@@ -374,8 +377,7 @@ class Exp_Main(Exp_Basic):
                             outputs = ys[:, -self.args.pred_len:, :]
                             
                         elif 'Decoder' in self.args.model:                            
-                            # 由于是decoder-only，所以start_symbol应当是整个batch_x了吧
-                            # start_symbol为x的最后一个patch
+                            # * 由于是decoder-only，所以start_symbol应当是整个batch_x了吧！
                             start_symbol = batch_x
                             output_patch_num = int((self.args.pred_len - self.args.patch_len) / self.args.stride + 1)
                             assert output_patch_num * self.args.patch_len == self.args.pred_len
@@ -400,7 +402,6 @@ class Exp_Main(Exp_Basic):
                     elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
                         # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
-                        # 先去掉label_len
                         dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float().to(self.device)
                         # 然后和batch_x合并？
                         dec_inp = torch.cat([batch_x, dec_inp], dim=1).float().to(self.device)
@@ -604,9 +605,8 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(dec_inp, batch_y_mark)
                     
                     elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
-                        # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
-                        # * 直接换成都是zero的值
-                        # 先去掉label_len
+                        # * 和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
+                        # * 直接将预测窗口换成都是zero的值
                         dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                         # 然后和batch_x合并？
                         dec_inp = torch.cat([batch_x, dec_inp], dim=1).float().to(self.device)
@@ -988,8 +988,8 @@ class Exp_Main(Exp_Basic):
                 preds.append(pred)
                 trues.append(true)
                 inputx.append(batch_x.detach().cpu().numpy())
-                # if i % 20 == 0:
-                if i % 1 == 0:
+                if i % 20 == 0:
+                # if i % 1 == 0:
                     input = batch_x.detach().cpu().numpy()
                     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
                     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)

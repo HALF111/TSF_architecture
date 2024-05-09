@@ -8,13 +8,13 @@ data_name=ETTm2
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=3
+gpu_num=0
 
 random_seed=2021
 
 
-# ! 注意：需要用"bash etth2.sh"调用而非"sh etth2.sh"来调用此script
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder_direct Decoder_direct Transformer
+# ! 注意：需要用"bash ettm2.sh"调用而非"sh ettm2.sh"来调用此script
+for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -44,8 +44,8 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
+      --e_layers $e_layers \
+      --d_layers $d_layers \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -53,7 +53,7 @@ do
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
-      --train_epochs 30\
+      --train_epochs 20 \
       --patch_len 16 \
       --stride 16 \
       --gpu $gpu_num \

@@ -8,12 +8,12 @@ data_name=custom
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=3
+gpu_num=0
 
 random_seed=2021
 
 
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder_direct Decoder_direct Transformer
+for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -43,8 +43,8 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
+      --e_layers $e_layers \
+      --d_layers $d_layers \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \

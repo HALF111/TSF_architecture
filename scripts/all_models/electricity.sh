@@ -13,7 +13,7 @@ gpu_num=3
 random_seed=2021
 
 
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder_direct Decoder_direct Transformer
+for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -52,7 +52,7 @@ do
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
-      --train_epochs 30\
+      --train_epochs 20 \
       --patch_len 16 \
       --stride 16 \
       --gpu $gpu_num \

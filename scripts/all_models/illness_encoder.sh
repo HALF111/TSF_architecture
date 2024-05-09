@@ -1,7 +1,7 @@
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=national_illness.csv
+model_id_name=national_illness
+data_name=custom
 
 # seq_len=104
 # model_name=PatchTST
@@ -13,8 +13,8 @@ gpu_num=0
 random_seed=2021
 
 
-# ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+for model_name in Encoder_zeros_flatten Masked_encoder_flatten
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -29,9 +29,9 @@ fi
 # for norm in layer batch
 for norm in layer
 do
-for seq_len in 336
+for seq_len in 104
 do
-for pred_len in 96
+for pred_len in 24
 do
     python -u run_longExp.py \
       --random_seed $random_seed \
@@ -53,9 +53,9 @@ do
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
-      --train_epochs 20 \
-      --patch_len 16 \
-      --stride 16 \
+      --train_epochs 100\
+      --patch_len 8 \
+      --stride 8 \
       --gpu $gpu_num \
       --batch_size 32 \
       --run_train --run_test \

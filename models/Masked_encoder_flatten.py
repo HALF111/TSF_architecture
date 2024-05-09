@@ -147,8 +147,9 @@ class Model(nn.Module):
             norm_layer=self.norm_layer
         )
         
+        # self.projection = nn.Linear(self.output_patch_num*configs.d_model, self.pred_len)
+        self.projection = nn.Linear(configs.d_model, self.patch_len)
         self.flatten = nn.Flatten(start_dim=-2)
-        self.projection = nn.Linear(self.output_patch_num*configs.d_model, self.pred_len)
         
         # # Decoder
         # # Decoder中包含d_layers个DecoderLayer，
@@ -231,9 +232,10 @@ class Model(nn.Module):
         # ! 由于mask_encoder包含前面部分，这里需要取出最后的output_patch_num的部分
         enc_out = enc_out[:, -self.output_patch_num:, :]  # [(bs*channel) x output_patch_num x d_model]
         
-        # * 先展平，然后做线性映射？
-        output = self.flatten(enc_out)  # [(bs*channel) x output_patch_num x patch_len]
-        output = self.projection(output)  # [(bs*channel) x pred_len]
+        # ! 由于共享权重，所以是先映射再展平
+        output = self.projection(enc_out)  # [(bs*channel) x output_patch_num x patch_num]
+        assert output.shape[-1] * output.shape[-2] == self.pred_len
+        output = self.flatten(output)  # [(bs*channel) x pred_len]
         output = output.reshape(bs, nvars, -1)  # [bs x channel x pred_len]
         output = output.permute(0,2,1)  # [bs x pred_len x channel]
         

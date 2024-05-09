@@ -123,6 +123,7 @@ class Model(nn.Module):
         # * mask embedding
         # * 这个就是masked encoder中加在预测窗口中的embedding
         with torch.no_grad():
+            # ! 类似于mask_encoder，但是这里将mask固定为一个全0的向量！！
             self.mask = torch.zeros(1, d_model)  # (1, d_model)
         
         # Encoder
@@ -148,34 +149,6 @@ class Model(nn.Module):
         
         self.flatten = nn.Flatten(start_dim=-2)
         self.projection = nn.Linear(self.output_patch_num*configs.d_model, self.pred_len)
-        
-        # # Decoder
-        # # Decoder中包含d_layers个DecoderLayer，
-        # # 其中每个DecoderLayer中包括一个使用ProbAttention的自注意力层，和一个使用FullAttention的正常的注意力层（这个注意力层的queries来自上一层自注意力层，而keys和values则来自encoder）
-        # # 最后也还是再加上一层layerNorm层
-        # self.decoder = Decoder(
-        #     [
-        #         DecoderLayer(
-        #             AttentionLayer(
-        #                 FullAttention(True, configs.factor, attention_dropout=configs.dropout, output_attention=False),
-        #                 configs.d_model, configs.n_heads),  # 注意这里第一个的mask_flag参数被设置成为了True，这是因为在decoder的第一层用的是masked的自注意力；而其他的注意力都是False
-        #             AttentionLayer(
-        #                 FullAttention(False, configs.factor, attention_dropout=configs.dropout, output_attention=False),
-        #                 configs.d_model, configs.n_heads),
-        #             configs.d_model,
-        #             configs.d_ff,
-        #             dropout=configs.dropout,
-        #             activation=configs.activation,
-        #             norm_type=configs.norm,
-        #         )
-        #         for l in range(configs.d_layers)
-        #     ],
-        #     # norm_layer=torch.nn.LayerNorm(configs.d_model),
-        #     norm_layer=self.norm_layer,
-        #     # projection=nn.Linear(configs.d_model, configs.c_out, bias=True)
-        #     # ! 注意这里的projection的映射维度也要改成patch_len
-        #     projection=nn.Linear(configs.d_model, self.patch_len, bias=True)
-        # )
 
     def forward(self, x_enc, x_mark_enc,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
@@ -214,7 +187,7 @@ class Model(nn.Module):
         # x_dec = x_dec.reshape(bs*nvars, output_patch_num, patch_len)  # [(bs*channel) x patch_num x patch_len]
 
 
-        # ! 先生成mask_token
+        # ! 这里的mask_token只是形式模仿mask_encoder，但事实上是固定为全0的向量
         # 2、加上预测窗口中的mask部分
         # self.mask: [1, d_model]
         mask_token = self.mask.unsqueeze(0)  # mask_token: [1, 1, d_model]

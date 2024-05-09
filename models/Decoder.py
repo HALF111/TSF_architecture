@@ -232,6 +232,7 @@ class Model(nn.Module):
         # 留下的部分应当为：[seq_len-patch_len : seq_len+pred_len-patch_len]
         # print(dec_out.shape, self.pred_len, self.patch_len)
         assert dec_out.shape[1] == self.pred_len + self.seq_len
+        # 这里做一个切割
         dec_out = dec_out[:, self.seq_len-self.patch_len:self.seq_len+self.pred_len-self.patch_len, :]
         assert dec_out.shape[1] == self.pred_len
         

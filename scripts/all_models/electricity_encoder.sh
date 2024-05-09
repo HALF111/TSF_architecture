@@ -1,7 +1,7 @@
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=electricity.csv
+model_id_name=electricity
+data_name=custom
 
 # seq_len=104
 # model_name=PatchTST
@@ -13,8 +13,9 @@ gpu_num=0
 random_seed=2021
 
 
-# ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+# for model_name in Prefix_decoder Decoder Transformer
+for model_name in Encoder_zeros_flatten Masked_encoder_flatten
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -47,9 +48,9 @@ do
       --e_layers $e_layers \
       --d_layers $d_layers \
       --factor 3 \
-      --enc_in 7 \
-      --dec_in 7 \
-      --c_out 7 \
+      --enc_in 321 \
+      --dec_in 321 \
+      --c_out 321 \
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
