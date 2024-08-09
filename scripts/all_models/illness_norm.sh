@@ -13,8 +13,8 @@ gpu_num=1
 random_seed=2021
 
 
-# for model_name in Encoder Encoder_overall Encoder_zeros_no_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer
-for model_name in Encoder_zeros_no_flatten Masked_encoder_no_flatten
+for model_name in Encoder Encoder_overall Encoder_zeros_no_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer
+# for model_name in Encoder_zeros_no_flatten Masked_encoder_no_flatten
 # for model_name in Encoder Encoder_overall Encoder_zeros_flatten Encoder_zeros_no_flatten Masked_encoder_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer Double_encoder Double_decoder
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then

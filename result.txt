@@ -1231,3 +1231,9 @@ mse:0.41226300597190857, mae:0.4290285110473633, rse:0.5148594975471497
 ETTm2_512_720_Encoder_overall_ETTm2_ftM_sl512_ll48_pl720_dm512_nh8_el6_dl0_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
 mse:0.35936862230300903, mae:0.38740575313568115, rse:0.481657475233078
 
+ETTh2_512_336_Encoder_zeros_no_flatten_ETTh2_ftM_sl512_ll48_pl336_dm512_nh8_el6_dl0_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:0.48195672035217285, mae:0.4763694703578949, rse:0.554828941822052
+
+ETTh2_512_720_Encoder_zeros_no_flatten_ETTh2_ftM_sl512_ll48_pl720_dm512_nh8_el6_dl0_df2048_fc3_ebtimeF_dtTrue_foreFalse_Exp_0  
+mse:0.43268853425979614, mae:0.46441933512687683, rse:0.5258984565734863
+

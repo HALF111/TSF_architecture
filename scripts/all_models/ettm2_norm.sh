@@ -1,21 +1,21 @@
 root_path_name=./dataset/
-data_path_name=ETTm1.csv
-model_id_name=ETTm1
-data_name=ETTm1
+data_path_name=ETTm2.csv
+model_id_name=ETTm2
+data_name=ETTm2
 
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=2
+gpu_num=0
 
 random_seed=2021
 
 
-# for model_name in PatchTST Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer Encoder_zeros_flatten Masked_encoder_flatten Double_decoder Double_encoder
-# for model_name in Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-for model_name in Encoder Encoder_overall Encoder_zeros_no_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer
+# ! 注意：需要用"bash ettm2.sh"调用而非"sh ettm2.sh"来调用此script
+# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+for model_name in Encoder Encoder_overall Encoder_zeros_flatten Encoder_zeros_no_flatten Masked_encoder_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer Double_encoder Double_decoder
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -28,13 +28,13 @@ elif [[ "$model_name" =~ "Transformer" ]]; then
     d_layers=3
 fi
 # for norm in layer batch
-for norm in layer
+# for norm in layer
+for norm in batch
 do
 for seq_len in 512
 do
-# 别忘记改pred_len！！！
 # for pred_len in 96
-for pred_len in 720
+for pred_len in 96 192 336 720
 do
     if [ ! -d './script_outputs/' ]; then
         mkdir './script_outputs/'
@@ -42,7 +42,7 @@ do
     if [ ! -d './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/' ]; then
         mkdir './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'
     fi
-    
+
     python -u run_longExp.py \
       --random_seed $random_seed \
       --is_training 1 \
@@ -68,10 +68,9 @@ do
       --stride 16 \
       --gpu $gpu_num \
       --batch_size 32 \
+      --run_train --run_test \
       --norm $norm \
-      --multiple_pred_len_list 96 192 336 720 \
-      --run_train --run_multiple_pred_len \
-      > './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'$model_name'_'multiple_pred_len.log
+      > './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'$model_name'_'$norm'norm'.log
 done
 done
 done
