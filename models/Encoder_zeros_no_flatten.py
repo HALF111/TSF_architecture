@@ -119,12 +119,11 @@ class Model(nn.Module):
             self.norm_layer = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(configs.d_model), Transpose(1,2))
         else:
             self.norm_layer = nn.LayerNorm(configs.d_model)
-        
-        
+            
         # * mask embedding
         # * 这个就是masked encoder中加在预测窗口中的embedding
-        self.mask = nn.Embedding(1, d_model)  # (1, d_model)
-        
+        with torch.no_grad():
+            self.mask = torch.zeros(1, d_model)  # (1, d_model)
         
         # Encoder
         # 其中包含e_layers个EncoderLayer层，和e_layers-1个ConvLayer层
@@ -147,36 +146,9 @@ class Model(nn.Module):
             norm_layer=self.norm_layer
         )
         
+        # self.projection = nn.Linear(self.output_patch_num*configs.d_model, self.pred_len)
+        self.projection = nn.Linear(configs.d_model, self.patch_len)
         self.flatten = nn.Flatten(start_dim=-2)
-        self.projection = nn.Linear(self.output_patch_num*configs.d_model, self.pred_len)
-        
-        # # Decoder
-        # # Decoder中包含d_layers个DecoderLayer，
-        # # 其中每个DecoderLayer中包括一个使用ProbAttention的自注意力层，和一个使用FullAttention的正常的注意力层（这个注意力层的queries来自上一层自注意力层，而keys和values则来自encoder）
-        # # 最后也还是再加上一层layerNorm层
-        # self.decoder = Decoder(
-        #     [
-        #         DecoderLayer(
-        #             AttentionLayer(
-        #                 FullAttention(True, configs.factor, attention_dropout=configs.dropout, output_attention=False),
-        #                 configs.d_model, configs.n_heads),  # 注意这里第一个的mask_flag参数被设置成为了True，这是因为在decoder的第一层用的是masked的自注意力；而其他的注意力都是False
-        #             AttentionLayer(
-        #                 FullAttention(False, configs.factor, attention_dropout=configs.dropout, output_attention=False),
-        #                 configs.d_model, configs.n_heads),
-        #             configs.d_model,
-        #             configs.d_ff,
-        #             dropout=configs.dropout,
-        #             activation=configs.activation,
-        #             norm_type=configs.norm,
-        #         )
-        #         for l in range(configs.d_layers)
-        #     ],
-        #     # norm_layer=torch.nn.LayerNorm(configs.d_model),
-        #     norm_layer=self.norm_layer,
-        #     # projection=nn.Linear(configs.d_model, configs.c_out, bias=True)
-        #     # ! 注意这里的projection的映射维度也要改成patch_len
-        #     projection=nn.Linear(configs.d_model, self.patch_len, bias=True)
-        # )
 
     def forward(self, x_enc, x_mark_enc,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
@@ -215,10 +187,10 @@ class Model(nn.Module):
         # x_dec = x_dec.reshape(bs*nvars, output_patch_num, patch_len)  # [(bs*channel) x patch_num x patch_len]
 
 
-        # ! 先生成mask_token
+        # ! 这里的mask_token只是形式模仿mask_encoder，但事实上是固定为全0的向量
         # 2、加上预测窗口中的mask部分
         # self.mask: [1, d_model]
-        mask_token = self.mask.weight.unsqueeze(0)  # mask_token: [1, 1, d_model]
+        mask_token = self.mask.unsqueeze(0)  # mask_token: [1, 1, d_model]
         mask_token = mask_token.repeat(x_enc.shape[0], self.output_patch_num, 1)  # mask_token: [bs x nvars x output_patch_num x d_model]
         mask_token = mask_token.to(x_enc.device)
 
@@ -231,9 +203,10 @@ class Model(nn.Module):
         # ! 由于mask_encoder包含前面部分，这里需要取出最后的output_patch_num的部分
         enc_out = enc_out[:, -self.output_patch_num:, :]  # [(bs*channel) x output_patch_num x d_model]
         
-        # * 先展平，然后做线性映射？
-        output = self.flatten(enc_out)  # [(bs*channel) x output_patch_num x patch_len]
-        output = self.projection(output)  # [(bs*channel) x pred_len]
+        # ! 由于共享权重，所以是先映射再展平
+        output = self.projection(enc_out)  # [(bs*channel) x output_patch_num x patch_num]
+        assert output.shape[-1] * output.shape[-2] == self.pred_len
+        output = self.flatten(output)  # [(bs*channel) x pred_len]
         output = output.reshape(bs, nvars, -1)  # [bs x channel x pred_len]
         output = output.permute(0,2,1)  # [bs x pred_len x channel]
         

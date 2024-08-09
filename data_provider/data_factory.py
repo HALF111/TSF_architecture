@@ -30,6 +30,9 @@ def data_provider(args, flag):
         drop_last = True
         batch_size = args.batch_size
         freq = args.freq
+    
+    # 新增
+    train_ratio = args.train_ratio
 
     data_set = Data(
         root_path=args.root_path,
@@ -39,7 +42,8 @@ def data_provider(args, flag):
         features=args.features,
         target=args.target,
         timeenc=timeenc,
-        freq=freq
+        freq=freq,
+        train_ratio=train_ratio
     )
     print(flag, len(data_set))
     data_loader = DataLoader(

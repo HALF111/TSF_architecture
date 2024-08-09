@@ -16,10 +16,11 @@ from models import Informer, Autoformer, DLinear, Linear, NLinear, PatchTST
 # from models import PatchTST_attn_weighted, PatchTST_attn_weight_global, PatchTST_attn_weight_global_indiv
 # from models import PatchTST_attn_weight_corr_dmodel_indiv
 # from models import PatchTST_random_mask
-from models import Masked_encoder, Encoder, Encoder_zeros, Encoder_overall
+from models import Masked_encoder_no_flatten, Encoder, Encoder_zeros_no_flatten, Encoder_overall
 from models import Encoder_zeros_flatten, Masked_encoder_flatten
 from models import Transformer, Transformer_autoregressive, Transformer_no_patch
 from models import Decoder, Decoder_autoregressive, Prefix_decoder
+from models import Double_decoder, Double_encoder
 
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
@@ -85,9 +86,9 @@ class Exp_Main(Exp_Basic):
             # 'PatchTST_attn_weight_global_indiv': PatchTST_attn_weight_global_indiv,
             # 'PatchTST_attn_weight_corr_dmodel_indiv': PatchTST_attn_weight_corr_dmodel_indiv,
             # 'PatchTST_random_mask': PatchTST_random_mask,
-            'Masked_encoder': Masked_encoder,
+            'Masked_encoder_no_flatten': Masked_encoder_no_flatten,
             'Encoder': Encoder,
-            'Encoder_zeros': Encoder_zeros,
+            'Encoder_zeros_no_flatten': Encoder_zeros_no_flatten,
             'Encoder_overall': Encoder_overall,
             'Encoder_zeros_flatten': Encoder_zeros_flatten,
             'Masked_encoder_flatten': Masked_encoder_flatten,
@@ -97,6 +98,8 @@ class Exp_Main(Exp_Basic):
             'Decoder_autoregressive': Decoder_autoregressive,
             'Decoder': Decoder,
             'Prefix_decoder': Prefix_decoder,
+            'Double_decoder': Double_decoder,
+            'Double_encoder': Double_encoder,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -399,8 +402,9 @@ class Exp_Main(Exp_Basic):
                             # print("ys.shape", ys.shape)
                             # print("outputs.shape", outputs.shape)
                     
+                    # direct-output的decoder
                     elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
-                        # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
+                        # * 和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
                         # * 直接换成都是zero的值
                         dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float().to(self.device)
                         # 然后和batch_x合并？
@@ -1095,4 +1099,215 @@ class Exp_Main(Exp_Basic):
 
         np.save(folder_path + 'real_prediction.npy', preds)
 
+        return
+
+
+    def test_multiple_pred_len(self, setting, test=0):
+        mse_list, mae_list, rse_list = [], [], []
+        orig_pred_len = int(self.args.pred_len)
+        for cur_pred_len in self.args.multiple_pred_len_list:
+            # 取数据之前修改一下pred_len：
+            # 取完之后再改回来
+            cur_pred_len = int(cur_pred_len)
+            self.args.pred_len = cur_pred_len
+            test_data, test_loader = self._get_data(flag='test')
+            self.args.pred_len = orig_pred_len
+            
+            if test:
+                # 这里为了防止异常，需要做一些修改，要在torch.load后加上map_location='cuda:0'
+                print('loading model')
+                # self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
+                self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth'), map_location='cuda:0'))
+
+            preds = []
+            trues = []
+            inputx = []
+            
+            folder_path = './test_results/' + setting + '/'
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+            
+            # 获得的总patch数
+            patch_num = int((self.args.seq_len - self.args.patch_len) / self.args.stride + 1)
+            # 默认是需要做padding的？
+            # padding大小事实上只是一个stride的大小！
+            if self.args.padding_patch == 'end': # can be modified to general case
+                patch_num += 1
+
+            self.model.eval()
+            with torch.no_grad():
+                for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+                    batch_x = batch_x.float().to(self.device)
+                    batch_y = batch_y.float().to(self.device)
+
+                    batch_x_mark = batch_x_mark.float().to(self.device)
+                    batch_y_mark = batch_y_mark.float().to(self.device)
+
+                    # 先去掉label_len
+                    bs, pl, c = batch_y.shape
+                    dec_inp = torch.zeros([bs, orig_pred_len, c]).float().to(self.device)
+                    dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                    # encoder - decoder
+                    if self.args.use_amp:
+                        with torch.cuda.amp.autocast():
+                            if 'MoE' in self.args.model:
+                                outputs, aux_loss = self.model(batch_x)
+                            elif 'Linear' in self.args.model or 'TST' in self.args.model or 'Masked_encoder' in self.args.model:
+                                outputs = self.model(batch_x)
+                            else:
+                                if self.args.output_attention:
+                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                else:
+                                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    else:
+                        if 'autoregressive' in self.args.model:
+                            if 'Transformer' in self.args.model:
+                                # start_symbol为x的最后一个patch
+                                start_symbol = batch_x[:, -self.args.patch_len:, ]
+                                output_patch_num = int((cur_pred_len - self.args.patch_len) / self.args.stride + 1)
+                                assert output_patch_num * self.args.patch_len == cur_pred_len, f"output_patch_num={output_patch_num}, self.args.patch_len={self.args.patch_len}, cur_pred_len={cur_pred_len}"
+                                
+                                # 先得到encoder的输出
+                                enc_out, enc_attns = self.model.encode(batch_x, batch_x_mark)
+                                
+                                ys = start_symbol
+                                # 然后自回归地生成后续输出
+                                for k in range(output_patch_num):
+                                    ys_len = ys.shape[1]
+                                    dec_out = self.model.decode(ys, batch_y_mark[:, :ys_len, :], enc_out, enc_attns)
+                                    dec_out = dec_out[:, -self.args.patch_len:, :]
+                                    ys = torch.cat([ys, dec_out], dim=1)
+                                
+                                # 但这里由于第一个是开始的token，所以不应该包括进来，所以这里还是保留后半部分的预测值。
+                                # 也即丢弃掉开头的start_symbol
+                                assert ys.shape[1] == cur_pred_len + self.args.patch_len,  f"ys.shape[1]={ys.shape[1]}, cur_pred_len={cur_pred_len}, self.args.patch_len={self.args.patch_len}"
+                                outputs = ys[:, -cur_pred_len:, :]
+                            
+                            elif 'Decoder' in self.args.model:                            
+                                # 由于是decoder-only，所以start_symbol应当是整个batch_x了吧
+                                # start_symbol为x的最后一个patch
+                                start_symbol = batch_x
+                                output_patch_num = int((cur_pred_len - self.args.patch_len) / self.args.stride + 1)
+                                # assert output_patch_num * self.args.patch_len == self.args.pred_len
+                                assert output_patch_num * self.args.patch_len == cur_pred_len, f"output_patch_num={output_patch_num}, self.args.patch_len={self.args.patch_len}, cur_pred_len={cur_pred_len}"
+                                
+                                ys = start_symbol
+                                # 然后使用decoder自回归地生成后续输出
+                                for k in range(output_patch_num):
+                                    ys_len = ys.shape[1]
+                                    dec_out = self.model.inference(ys, batch_y_mark[:, :ys_len, :])
+                                    # 这里只需要再取出最后一个patch作为预测即可
+                                    dec_out = dec_out[:, -self.args.patch_len:, :]
+                                    ys = torch.cat([ys, dec_out], dim=1)
+                                
+                                # 最后，去掉开头的第一个start token，即得到我们希望的预测结果
+                                # 也即保留靠后的pred_len部分。
+                                outputs = ys[:, -cur_pred_len:, :]
+                        
+                        elif 'Decoder' in self.args.model or 'Prefix_decoder' in self.args.model:
+                            # *和自回归类似，但由于是直接输出整个预测窗口，所以不应该不含ground-truth了
+                            # * 直接换成都是zero的值
+                            # 先去掉label_len
+                            bs, pl, c = batch_y.shape
+                            dec_inp = torch.zeros([bs, orig_pred_len, c]).float().to(self.device)
+                            # 然后和batch_x合并？
+                            dec_inp = torch.cat([batch_x, dec_inp], dim=1).float().to(self.device)
+                            # assert dec_inp.shape[1] == self.args.seq_len + self.args.pred_len
+                            assert dec_inp.shape[1] == self.args.seq_len + orig_pred_len, f"output_patch_num={output_patch_num}, self.args.patch_len={self.args.patch_len}, orig_pred_len={orig_pred_len}"
+                            
+                            # 这里的输入是整个seq_len+pred_len；
+                            # 由于decoder中本来就有causal的mask，所以这样整个输入是没问题的。
+                            
+                            # 模型给出输出
+                            # * 由于在Transformer里面就对输出做了只保留最后pred_len的裁剪，所以这里无需额外的处理了。
+                            # * 另外，由于是decoder，所以这里只需要输入dec_inp即可，不需要batch_x相关的内容
+                            outputs = self.model(dec_inp, batch_y_mark)
+                        
+                        elif 'random' in self.args.model:
+                            import random
+                            # test的时候也是直接保留全部patches
+                            # random_len = 0
+                            # idx = random.randint(0, len(self.best_patch_num)-1)
+                            unmasked_patch_num = self.best_patch_num[-1]
+                            random_len = patch_num - unmasked_patch_num
+                            
+                            outputs = self.model(batch_x, random_len)
+                        elif 'MoE' in self.args.model:
+                            outputs, aux_loss = self.model(batch_x)
+                        elif 'Linear' in self.args.model \
+                            or 'TST' in self.args.model:
+                            outputs = self.model(batch_x)
+                        elif 'Masked_encoder' in self.args.model \
+                            or 'Encoder' in self.args.model:
+                            outputs = self.model(batch_x, batch_x_mark)
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+                    f_dim = -1 if self.args.features == 'MS' else 0
+                    # print(outputs.shape, batch_y.shape)
+                    # 1.1 outputs先取出最后的orig_pred_len，为预测窗口
+                    outputs = outputs[:, -orig_pred_len:, f_dim:]
+                    # 1.2 然后再额外裁剪出预测窗口中最靠前的cur_pred_len的一部分
+                    outputs = outputs[:, :cur_pred_len, :]
+                    # 2. 但是由于batch_y是label_len+cur_pred_len，所以只取出最后的一部分就可以了
+                    batch_y = batch_y[:, -cur_pred_len:, f_dim:].to(self.device)
+                    # print(outputs.shape, batch_y.shape)
+                    
+                    
+                    outputs = outputs.detach().cpu().numpy()
+                    batch_y = batch_y.detach().cpu().numpy()
+
+                    pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
+                    true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
+
+                    preds.append(pred)
+                    trues.append(true)
+                    inputx.append(batch_x.detach().cpu().numpy())
+                    # if i % 20 == 0:
+                    # # if i % 1 == 0:
+                    #     input = batch_x.detach().cpu().numpy()
+                    #     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
+                    #     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
+                    #     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
+
+            if self.args.test_flop:
+                test_params_flop((batch_x.shape[1],batch_x.shape[2]))
+                exit()
+            
+            preds = np.array(preds)
+            trues = np.array(trues)
+            inputx = np.array(inputx)
+
+            preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+            trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
+            inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
+            
+            print("preds.shape:", preds.shape)
+
+            # result save
+            folder_path = './results/' + setting + '/'
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+
+            mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
+            print('mse:{}, mae:{}, rse:{} for pred_len:{}'.format(mse, mae, rse, cur_pred_len))
+            # 别忘记append！！
+            mse_list.append(mse); mae_list.append(mae); rse_list.append(rse)
+            # f = open("result.txt", 'a')
+            # f.write(setting + "  \n")
+            # f.write('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
+            # f.write('\n')
+            # f.write('\n')
+            # f.close()
+        
+        print(">"*30)
+        print(f"model: {self.args.model}, seq_len: {self.args.seq_len}, multiple_pred_len_list: {self.args.multiple_pred_len_list}")
+        print("mse_list:", mse_list)
+        print("mae_list:", mae_list)
+        print("rse_list:", rse_list)
+        print('overall: mse:{}, mae:{}, rse:{}'.format(sum(mse_list)/len(mse_list), sum(mae_list)/len(mae_list), sum(rse_list)/len(rse_list)))
+        
         return

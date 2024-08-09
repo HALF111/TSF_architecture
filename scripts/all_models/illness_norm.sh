@@ -1,21 +1,21 @@
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=national_illness.csv
+model_id_name=national_illness
+data_name=custom
 
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=0
+gpu_num=1
 
 random_seed=2021
 
 
-# ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
-# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-for model_name in Encoder Encoder_overall Encoder_zeros_flatten Encoder_zeros_no_flatten Masked_encoder_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer Double_encoder Double_decoder
+# for model_name in Encoder Encoder_overall Encoder_zeros_no_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer
+for model_name in Encoder_zeros_no_flatten Masked_encoder_no_flatten
+# for model_name in Encoder Encoder_overall Encoder_zeros_flatten Encoder_zeros_no_flatten Masked_encoder_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer Double_encoder Double_decoder
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -28,12 +28,14 @@ elif [[ "$model_name" =~ "Transformer" ]]; then
     d_layers=3
 fi
 # for norm in layer batch
-for norm in layer
+# for norm in layer
+for norm in batch
 do
-for seq_len in 512
+# for seq_len in 104
+for seq_len in 120
 do
-# for pred_len in 96
-for pred_len in 96 192 336 720
+# for pred_len in 24
+for pred_len in 24 36 48 60
 do
     if [ ! -d './script_outputs/' ]; then
         mkdir './script_outputs/'
@@ -41,7 +43,7 @@ do
     if [ ! -d './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/' ]; then
         mkdir './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'
     fi
-    
+
     python -u run_longExp.py \
       --random_seed $random_seed \
       --is_training 1 \
@@ -62,9 +64,9 @@ do
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
-      --train_epochs 20 \
-      --patch_len 16 \
-      --stride 16 \
+      --train_epochs 100\
+      --patch_len 6 \
+      --stride 6 \
       --gpu $gpu_num \
       --batch_size 32 \
       --run_train --run_test \

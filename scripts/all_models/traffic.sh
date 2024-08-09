@@ -13,12 +13,13 @@ gpu_num=0
 random_seed=2021
 
 
-for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
+for model_name in Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
     d_layers=0
-elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" ]]; then
+elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" || "$model_name" =~ "PatchTST" ]]; then
     e_layers=0
     d_layers=6
 elif [[ "$model_name" =~ "Transformer" ]]; then
@@ -28,8 +29,8 @@ fi
 # for norm in layer batch
 for norm in layer
 do
-# for seq_len in 336
-for seq_len in 96
+for seq_len in 336
+# for seq_len in 96
 do
 for pred_len in 96
 do
@@ -57,7 +58,7 @@ do
       --patch_len 16 \
       --stride 16 \
       --gpu $gpu_num \
-      --batch_size 32 \
+      --batch_size 8 \
       --run_train --run_test \
       --norm $norm
 done

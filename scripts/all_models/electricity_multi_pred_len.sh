@@ -1,21 +1,21 @@
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=electricity.csv
+model_id_name=electricity
+data_name=custom
 
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=0
+gpu_num=3
 
 random_seed=2021
 
 
-# ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
-# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-for model_name in Encoder Encoder_overall Encoder_zeros_flatten Encoder_zeros_no_flatten Masked_encoder_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer Double_encoder Double_decoder
+for model_name in PatchTST Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer Encoder_zeros_flatten Masked_encoder_flatten Double_decoder Double_encoder
+# for model_name in Prefix_decoder Decoder Transformer
+# for model_name in Encoder_zeros_flatten Masked_encoder_flatten
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -30,18 +30,12 @@ fi
 # for norm in layer batch
 for norm in layer
 do
-for seq_len in 512
+for seq_len in 336
 do
+# 别忘记改pred_len！！！
 # for pred_len in 96
-for pred_len in 96 192 336 720
+for pred_len in 720
 do
-    if [ ! -d './script_outputs/' ]; then
-        mkdir './script_outputs/'
-    fi
-    if [ ! -d './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/' ]; then
-        mkdir './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'
-    fi
-    
     python -u run_longExp.py \
       --random_seed $random_seed \
       --is_training 1 \
@@ -56,9 +50,9 @@ do
       --e_layers $e_layers \
       --d_layers $d_layers \
       --factor 3 \
-      --enc_in 7 \
-      --dec_in 7 \
-      --c_out 7 \
+      --enc_in 321 \
+      --dec_in 321 \
+      --c_out 321 \
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
@@ -67,9 +61,10 @@ do
       --stride 16 \
       --gpu $gpu_num \
       --batch_size 32 \
-      --run_train --run_test \
       --norm $norm \
-      > './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'$model_name'_'$norm'norm'.log
+      --multiple_pred_len_list 96 192 336 720 \
+      --run_train --run_multiple_pred_len
+    #   --train_ratio 0.3
 done
 done
 done

@@ -14,7 +14,7 @@ warnings.filterwarnings('ignore')
 class Dataset_ETT_hour(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h'):
+                 target='OT', scale=True, timeenc=0, freq='h', train_ratio=None):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -35,6 +35,8 @@ class Dataset_ETT_hour(Dataset):
         self.scale = scale
         self.timeenc = timeenc
         self.freq = freq
+        
+        self.train_ratio = train_ratio
 
         self.root_path = root_path
         self.data_path = data_path
@@ -45,10 +47,26 @@ class Dataset_ETT_hour(Dataset):
         df_raw = pd.read_csv(os.path.join(self.root_path,
                                           self.data_path))
 
-        border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
-        border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
+        # border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
+        # border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
+        # border1 = border1s[self.set_type]
+        # border2 = border2s[self.set_type]
+        
+        train_ratio = self.train_ratio
+        if train_ratio is None or train_ratio > 0.6 and train_ratio <= 0.7:
+            border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
+            border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
+            border1 = border1s[self.set_type]
+            border2 = border2s[self.set_type]
+        else:
+            assert train_ratio > 0 and train_ratio <= 0.6
+            num_train = int(12 * 30 * 24 / 0.6 * train_ratio)
+            cropped_len = 12 * 30 * 24 - num_train
+            border1s = [cropped_len, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
+            border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
+            border1 = border1s[self.set_type]
+            border2 = border2s[self.set_type]
+
 
         if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]
@@ -102,7 +120,7 @@ class Dataset_ETT_hour(Dataset):
 class Dataset_ETT_minute(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTm1.csv',
-                 target='OT', scale=True, timeenc=0, freq='t'):
+                 target='OT', scale=True, timeenc=0, freq='t', train_ratio=None):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -123,6 +141,8 @@ class Dataset_ETT_minute(Dataset):
         self.scale = scale
         self.timeenc = timeenc
         self.freq = freq
+        
+        self.train_ratio = train_ratio
 
         self.root_path = root_path
         self.data_path = data_path
@@ -133,10 +153,26 @@ class Dataset_ETT_minute(Dataset):
         df_raw = pd.read_csv(os.path.join(self.root_path,
                                           self.data_path))
 
-        border1s = [0, 12 * 30 * 24 * 4 - self.seq_len, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - self.seq_len]
-        border2s = [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
+        # border1s = [0, 12 * 30 * 24 * 4 - self.seq_len, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - self.seq_len]
+        # border2s = [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]
+        # border1 = border1s[self.set_type]
+        # border2 = border2s[self.set_type]
+        
+        train_ratio = self.train_ratio
+        if train_ratio is None or train_ratio > 0.6 and train_ratio <= 0.7:
+            border1s = [0, 12 * 30 * 24 * 4 - self.seq_len, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - self.seq_len]
+            border2s = [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]
+            border1 = border1s[self.set_type]
+            border2 = border2s[self.set_type]
+        else:
+            assert train_ratio > 0 and train_ratio <= 0.6
+            num_train = int(12 * 30 * 24 * 4 / 0.6 * train_ratio)
+            cropped_len = 12 * 30 * 24 * 4 - num_train
+            border1s = [cropped_len, 12 * 30 * 24 * 4 - self.seq_len, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - self.seq_len]
+            border2s = [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]
+            border1 = border1s[self.set_type]
+            border2 = border2s[self.set_type]
+        
 
         if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]
@@ -192,7 +228,7 @@ class Dataset_ETT_minute(Dataset):
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h'):
+                 target='OT', scale=True, timeenc=0, freq='h', train_ratio=None):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -213,6 +249,9 @@ class Dataset_Custom(Dataset):
         self.scale = scale
         self.timeenc = timeenc
         self.freq = freq
+        
+        # newly-add
+        self.train_ratio = train_ratio
 
         self.root_path = root_path
         self.data_path = data_path
@@ -231,13 +270,26 @@ class Dataset_Custom(Dataset):
         cols.remove('date')
         df_raw = df_raw[['date'] + cols + [self.target]]
         # print(cols)
-        num_train = int(len(df_raw) * 0.7)
-        num_test = int(len(df_raw) * 0.2)
-        num_vali = len(df_raw) - num_train - num_test
-        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
-        border2s = [num_train, num_train + num_vali, len(df_raw)]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
+        
+        train_ratio = self.train_ratio
+        if train_ratio is None:
+            num_train = int(len(df_raw) * 0.7)
+            num_test = int(len(df_raw) * 0.2)
+            num_vali = len(df_raw) - num_train - num_test
+            border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
+            border2s = [num_train, num_train + num_vali, len(df_raw)]
+            border1 = border1s[self.set_type]
+            border2 = border2s[self.set_type]
+        else:
+            assert train_ratio > 0 and train_ratio <= 0.7
+            num_train = int(len(df_raw) * train_ratio)
+            cropped_len = int(len(df_raw) * 0.7) - num_train
+            num_test = int(len(df_raw) * 0.2)
+            num_vali = len(df_raw) - num_train - num_test - cropped_len
+            border1s = [cropped_len, cropped_len + num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
+            border2s = [cropped_len + num_train, cropped_len + num_train + num_vali, len(df_raw)]
+            border1 = border1s[self.set_type]
+            border2 = border2s[self.set_type]
 
         if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]
@@ -284,6 +336,9 @@ class Dataset_Custom(Dataset):
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
     def __len__(self):
+        # print(len(self.data_x), self.seq_len, self.pred_len)
+        # print(type(len(self.data_x)), type(self.seq_len), type(self.pred_len))
+        # print(len(self.data_x) - self.seq_len - self.pred_len + 1)
         return len(self.data_x) - self.seq_len - self.pred_len + 1
 
     def inverse_transform(self, data):

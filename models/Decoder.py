@@ -233,6 +233,7 @@ class Model(nn.Module):
         # print(dec_out.shape, self.pred_len, self.patch_len)
         assert dec_out.shape[1] == self.pred_len + self.seq_len
         # 这里做一个切割
+        # * 也即：由于输出错位，需要shift一个单元——末尾去掉一个patch，往encoder输出取一个patch
         dec_out = dec_out[:, self.seq_len-self.patch_len:self.seq_len+self.pred_len-self.patch_len, :]
         assert dec_out.shape[1] == self.pred_len
         

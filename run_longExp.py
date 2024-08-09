@@ -129,6 +129,11 @@ if __name__ == '__main__':
     
     # 增加针对当前数据集的最长的seq_len
     parser.add_argument('--longest_seq_len', type=int, default=2000)
+    
+    # 新增只取出部分训练集数据
+    parser.add_argument('--train_ratio', type=float, default=0.7)
+    parser.add_argument('--multiple_pred_len_list', nargs='+')
+    parser.add_argument('--run_multiple_pred_len', action='store_true')
 
     args = parser.parse_args()
 
@@ -207,6 +212,10 @@ if __name__ == '__main__':
             if args.run_test:
                 print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
                 exp.test(setting, test=1)
+                
+            if args.run_multiple_pred_len:
+                print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                exp.test_multiple_pred_len(setting, test=1)
             
             if args.get_attn_plot:
                 print('>>>>>>>get attn_plot : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))

@@ -1,21 +1,21 @@
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=ETTh2.csv
+model_id_name=ETTh2
+data_name=ETTh2
 
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=0
+gpu_num=1
 
 random_seed=2021
 
 
-# ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
+# ! 注意：需要用"bash etth2.sh"调用而非"sh etth2.sh"来调用此script
 # for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-for model_name in Encoder Encoder_overall Encoder_zeros_flatten Encoder_zeros_no_flatten Masked_encoder_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer Double_encoder Double_decoder
+for model_name in Decoder_autoregressive Transformer_autoregressive
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
@@ -41,7 +41,7 @@ do
     if [ ! -d './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/' ]; then
         mkdir './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'
     fi
-    
+
     python -u run_longExp.py \
       --random_seed $random_seed \
       --is_training 1 \

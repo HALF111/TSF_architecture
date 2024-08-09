@@ -14,13 +14,15 @@ random_seed=2021
 
 
 # ! 注意：需要用"bash etth1.sh"调用而非"sh etth1.sh"来调用此script
-# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-for model_name in Encoder_zeros_flatten Masked_encoder_flatten
+# for model_name in PatchTST Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer Encoder_zeros_flatten Masked_encoder_flatten Double_decoder Double_encoder
+# for model_name in Encoder_zeros_flatten Masked_encoder_flatten
+# for model_name in Transformer Double_decoder Double_encoder
+for model_name in Encoder Encoder_overall Encoder_zeros_no_flatten Masked_encoder_no_flatten Prefix_decoder Decoder Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
     d_layers=0
-elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" ]]; then
+elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" || "$model_name" =~ "PatchTST" ]]; then
     e_layers=0
     d_layers=6
 elif [[ "$model_name" =~ "Transformer" ]]; then
@@ -30,10 +32,19 @@ fi
 # for norm in layer batch
 for norm in layer
 do
-for seq_len in 336
+for seq_len in 512
 do
-for pred_len in 96
+# * 别忘记改pred_len！！
+# for pred_len in 96
+for pred_len in 720
 do
+    if [ ! -d './script_outputs/' ]; then
+        mkdir './script_outputs/'
+    fi
+    if [ ! -d './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/' ]; then
+        mkdir './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'
+    fi
+    
     python -u run_longExp.py \
       --random_seed $random_seed \
       --is_training 1 \
@@ -59,8 +70,11 @@ do
       --stride 16 \
       --gpu $gpu_num \
       --batch_size 32 \
-      --run_train --run_test \
-      --norm $norm
+      --norm $norm \
+      --multiple_pred_len_list 96 192 336 720 \
+      --run_train --run_multiple_pred_len \
+      > './script_outputs/'$model_id_name'_'$seq_len'_'$pred_len'/'$model_name'_'multiple_pred_len.log
+    
 done
 done
 done

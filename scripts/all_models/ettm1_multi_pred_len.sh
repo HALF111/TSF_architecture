@@ -1,26 +1,25 @@
 root_path_name=./dataset/
-data_path_name=ETTm2.csv
-model_id_name=ETTm2
-data_name=ETTm2
+data_path_name=ETTm1.csv
+model_id_name=ETTm1
+data_name=ETTm1
 
 # seq_len=104
 # model_name=PatchTST
 # model_name=Transformer
 # model_name=Transformer_patch
 
-gpu_num=0
+gpu_num=2
 
 random_seed=2021
 
 
-# ! 注意：需要用"bash ettm2.sh"调用而非"sh ettm2.sh"来调用此script
-# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-for model_name in Encoder_zeros_flatten Masked_encoder_flatten
+for model_name in PatchTST Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer Encoder_zeros_flatten Masked_encoder_flatten Double_decoder Double_encoder
+# for model_name in Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
     d_layers=0
-elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" ]]; then
+elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" || "$model_name" =~ "PatchTST" ]]; then
     e_layers=0
     d_layers=6
 elif [[ "$model_name" =~ "Transformer" ]]; then
@@ -32,7 +31,9 @@ for norm in layer
 do
 for seq_len in 336
 do
-for pred_len in 96
+# 别忘记改pred_len！！！
+# for pred_len in 96
+for pred_len in 720
 do
     python -u run_longExp.py \
       --random_seed $random_seed \
@@ -59,8 +60,9 @@ do
       --stride 16 \
       --gpu $gpu_num \
       --batch_size 32 \
-      --run_train --run_test \
-      --norm $norm
+      --norm $norm \
+      --multiple_pred_len_list 96 192 336 720 \
+      --run_train --run_multiple_pred_len
 done
 done
 done

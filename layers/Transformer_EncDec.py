@@ -277,3 +277,107 @@ class Decoder_wo_CrossAttn(nn.Module):
         if self.projection is not None:
             x = self.projection(x)
         return x
+    
+
+class Decoder_wo_CrossAttn_wo_proj(nn.Module):
+    def __init__(self, layers, norm_layer=None, projection=None):
+        super(Decoder_wo_CrossAttn_wo_proj, self).__init__()
+        self.layers = nn.ModuleList(layers)
+        self.norm = norm_layer
+        # self.projection = projection
+
+    def forward(self, x, x_mask=None, cross_mask=None):
+        # self.layers中一共会含有d_layers层的DecoderLayer层
+        # 其中每个DecoderLayer层又会包括两个attention层，第一层为self-attention层，第二层为正常的attention层
+        for layer in self.layers:
+            x = layer(x, x_mask=x_mask, cross_mask=cross_mask)
+
+        # 这里再做一次norm，一般是LayerNorm
+        if self.norm is not None:
+            x = self.norm(x)
+
+        # if self.projection is not None:
+        #     x = self.projection(x)
+        return x
+
+
+
+class EncoderLayer_w_CrossAttn(nn.Module):
+    def __init__(self, self_attention, cross_attention, d_model, d_ff=None, 
+                 dropout=0.1, activation="relu", norm_type="layer"):
+        super(EncoderLayer_w_CrossAttn, self).__init__()
+        
+        # d_ff为Encoder中的postional-wise FFN中，两个全连接层里面的隐藏层维度，默认为4*d_model
+        d_ff = d_ff or 4 * d_model
+        
+        # 传入的attention一般是一个AttentionLayer类的实例
+        self.self_attention = self_attention
+        self.cross_attention = cross_attention
+        
+        # 从d_model到d_ff的一维卷积，后面再卷回来
+        self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_ff, kernel_size=1)
+        self.conv2 = nn.Conv1d(in_channels=d_ff, out_channels=d_model, kernel_size=1)
+        # Transformer一般用LayerNorm
+        if norm_type == "layer":
+            self.norm1 = nn.LayerNorm(d_model)
+            self.norm2 = nn.LayerNorm(d_model)
+            self.norm3 = nn.LayerNorm(d_model)
+        elif norm_type == "batch":
+            # * 也可以改用BatchNorm！
+            from layers.PatchTST_layers import Transpose
+            self.norm1 = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(d_model), Transpose(1,2))
+            self.norm2 = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(d_model), Transpose(1,2))
+            self.norm3 = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(d_model), Transpose(1,2))
+        
+        self.dropout = nn.Dropout(dropout)
+        self.activation = F.relu if activation == "relu" else F.gelu
+
+    def forward(self, x, cross, x_mask=None, cross_mask=None):
+        # x [B, L, D]
+        # 这里就相当于在做自注意力，所以QKV三者均传入了x
+        x = x + self.dropout(self.self_attention(
+            x, x, x,
+            attn_mask=x_mask
+        )[0])
+        x = self.norm1(x)
+        
+        x = x + self.dropout(self.cross_attention(
+            x, cross, cross,
+            attn_mask=cross_mask
+        )[0])
+        # 第二次的add & norm
+        y = x = self.norm2(x)
+        
+        # 然后下面也是做和transformer一样的positional-wise FFN，
+        # 这其中包括两个全连接层和中间一个ReLU激活层，且全连接层的中间隐藏层维度为d_ff
+        # 不过这里用了kernel=1的一维卷积、来替代全连接层了，但本质上二者是一样的，都是一个全连接/MLP
+        # PS：new_x、x和y的维度都是[32, 96, 512]，也即[B, L, D]
+        y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
+        y = self.dropout(self.conv2(y).transpose(-1, 1))
+
+        # 这里相当于是做第二个add & norm
+        # 返回输出结果x和注意力attn
+        return self.norm3(x + y)
+
+class Encoder_w_CrossAttn_w_proj(nn.Module):
+    def __init__(self, layers, norm_layer=None, projection=None):
+        super(Encoder_w_CrossAttn_w_proj, self).__init__()
+        self.layers = nn.ModuleList(layers)
+        self.norm = norm_layer
+        self.projection = projection
+
+    def forward(self, x, cross, x_mask=None, cross_mask=None):
+        # self.layers中一共会含有d_layers层的DecoderLayer层
+        # 其中每个DecoderLayer层又会包括两个attention层，第一层为self-attention层，第二层为正常的attention层
+        for layer in self.layers:
+            x = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask)
+
+        # 这里再做一次norm，一般是LayerNorm
+        # * 但这里可能是BatchNorm！
+        if self.norm is not None:
+            x = self.norm(x)
+
+        if self.projection is not None:
+            x = self.projection(x)
+        
+        return x

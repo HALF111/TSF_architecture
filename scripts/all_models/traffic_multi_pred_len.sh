@@ -1,6 +1,6 @@
 root_path_name=./dataset/
-data_path_name=electricity.csv
-model_id_name=electricity
+data_path_name=traffic.csv
+model_id_name=traffic
 data_name=custom
 
 # seq_len=104
@@ -13,14 +13,13 @@ gpu_num=0
 random_seed=2021
 
 
-# for model_name in Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer
-# for model_name in Prefix_decoder Decoder Transformer
-for model_name in Encoder_zeros_flatten Masked_encoder_flatten
+for model_name in PatchTST Encoder Encoder_overall Encoder_zeros Masked_encoder Prefix_decoder Decoder Transformer Encoder_zeros_flatten Masked_encoder_flatten Double_decoder Double_encoder
+# for model_name in Encoder_zeros_flatten Masked_encoder_flatten
 do
 if [[ "$model_name" =~ "Encoder" || "$model_name" =~ "encoder" ]]; then
     e_layers=6
     d_layers=0
-elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" ]]; then
+elif [[ "$model_name" =~ "Decoder" || "$model_name" =~ "decoder" || "$model_name" =~ "PatchTST" ]]; then
     e_layers=0
     d_layers=6
 elif [[ "$model_name" =~ "Transformer" ]]; then
@@ -31,8 +30,10 @@ fi
 for norm in layer
 do
 for seq_len in 336
+# for seq_len in 96
 do
-for pred_len in 96
+# for pred_len in 96
+for pred_len in 720
 do
     python -u run_longExp.py \
       --random_seed $random_seed \
@@ -48,9 +49,9 @@ do
       --e_layers $e_layers \
       --d_layers $d_layers \
       --factor 3 \
-      --enc_in 321 \
-      --dec_in 321 \
-      --c_out 321 \
+      --enc_in 862 \
+      --dec_in 862 \
+      --c_out 862 \
       --d_model 512 \
       --des 'Exp' \
       --itr 1 \
@@ -58,9 +59,10 @@ do
       --patch_len 16 \
       --stride 16 \
       --gpu $gpu_num \
-      --batch_size 32 \
-      --run_train --run_test \
-      --norm $norm
+      --batch_size 8 \
+      --norm $norm \
+      --multiple_pred_len_list 96 192 336 720 \
+      --run_train --run_multiple_pred_len
 done
 done
 done

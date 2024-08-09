@@ -147,7 +147,7 @@ class Model(nn.Module):
             
         # ! 由于是prefix decoder，所以这里需要设置一下mask！！！
         self.new_batch_size = configs.batch_size * configs.enc_in
-        self.dec_mask = PrefixMask(batcjh_num=self.new_batch_size, total_len=self.input_patch_num+self.output_patch_num, input_len=self.input_patch_num)
+        self.dec_mask = PrefixMask(batch_num=self.new_batch_size, total_len=self.input_patch_num+self.output_patch_num, input_len=self.input_patch_num)
         print(self.dec_mask._mask.shape)
         # print(self.dec_mask._mask[0][0])
         
